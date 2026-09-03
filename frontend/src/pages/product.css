@@ -1,0 +1,141 @@
+.products-page {
+  min-height: 100vh;
+  padding: 40px 6%;
+  background: #f6faf5;
+}
+
+.products-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.products-header h1 {
+  font-size: 38px;
+  margin-bottom: 8px;
+}
+
+.products-header p {
+  color: #666;
+  font-size: 17px;
+}
+
+.products-controls {
+  display: flex;
+  gap: 15px;
+  max-width: 900px;
+  margin: 0 auto 35px;
+}
+
+.products-controls input,
+.products-controls select {
+  padding: 14px 16px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 16px;
+  outline: none;
+  background: white;
+}
+
+.products-controls input {
+  flex: 1;
+}
+
+.products-controls select {
+  width: 200px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 25px;
+}
+
+.product-card {
+  background: white;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+  transition: 0.3s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.13);
+}
+
+.product-card img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+}
+
+.product-info {
+  padding: 20px;
+}
+
+.category {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #388e3c;
+  margin-bottom: 8px;
+}
+
+.product-info h2 {
+  font-size: 21px;
+  margin: 5px 0 8px;
+}
+
+.product-info p {
+  color: #777;
+  min-height: 42px;
+}
+
+.product-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.product-bottom strong {
+  font-size: 22px;
+}
+
+.product-bottom button {
+  border: none;
+  padding: 10px 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  background: #2e7d32;
+  color: white;
+  font-weight: 600;
+}
+
+.product-bottom button:hover {
+  background: #1b5e20;
+}
+
+.loading,
+.no-products {
+  text-align: center;
+  margin-top: 60px;
+}
+
+@media (max-width: 600px) {
+  .products-page {
+    padding: 25px 4%;
+  }
+
+  .products-header h1 {
+    font-size: 28px;
+  }
+
+  .products-controls {
+    flex-direction: column;
+  }
+
+  .products-controls select {
+    width: 100%;
+  }
+}

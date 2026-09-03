@@ -1,0 +1,289 @@
+* {
+  box-sizing: border-box;
+}
+
+.cart-page {
+  min-height: 100vh;
+  padding: 50px 7%;
+  background: #f7faf7;
+  color: #17351f;
+}
+
+/* Header */
+
+.cart-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.cart-header h1 {
+  font-size: 42px;
+  margin-bottom: 8px;
+}
+
+.cart-header p {
+  color: #65736a;
+  font-size: 18px;
+}
+
+/* Layout */
+
+.cart-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 30px;
+  align-items: start;
+}
+
+/* Items */
+
+.cart-items {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cart-item {
+  display: grid;
+  grid-template-columns: 100px 1fr auto auto auto;
+  align-items: center;
+  gap: 20px;
+  padding: 18px;
+  background: white;
+  border: 1px solid #e1e8e2;
+  border-radius: 18px;
+  box-shadow: 0 8px 25px rgba(20, 60, 30, 0.06);
+}
+
+.cart-item img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+/* Product Info */
+
+.cart-item-info span {
+  font-size: 13px;
+  color: #4d8758;
+  font-weight: 700;
+}
+
+.cart-item-info h2 {
+  margin: 5px 0;
+  font-size: 22px;
+}
+
+.cart-item-info p {
+  margin: 0;
+  color: #68756c;
+}
+
+/* Quantity */
+
+.quantity-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #d7dfd8;
+  border-radius: 10px;
+  padding: 5px;
+}
+
+.quantity-box button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 7px;
+  background: #eef5ef;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.quantity-box button:hover {
+  background: #dcebdd;
+}
+
+.quantity-box strong {
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Price */
+
+.item-total {
+  min-width: 75px;
+  text-align: right;
+  font-size: 18px;
+}
+
+/* Remove */
+
+.remove-button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.remove-button:hover {
+  transform: scale(1.1);
+}
+
+/* Summary */
+
+.cart-summary {
+  position: sticky;
+  top: 25px;
+  background: white;
+  padding: 28px;
+  border: 1px solid #e1e8e2;
+  border-radius: 18px;
+  box-shadow: 0 8px 25px rgba(20, 60, 30, 0.07);
+}
+
+.cart-summary h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.summary-row,
+.summary-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+
+.summary-total {
+  font-size: 23px;
+}
+
+.cart-summary hr {
+  border: none;
+  border-top: 1px solid #e4e9e5;
+}
+
+/* Buttons */
+
+.checkout-button,
+.clear-button,
+.shop-button {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 18px;
+  font-size: 16px;
+  cursor: pointer;
+  text-align: center;
+  display: block;
+  text-decoration: none;
+}
+
+.checkout-button {
+  margin-top: 20px;
+  background: #246b35;
+  color: white;
+}
+
+.checkout-button:hover {
+  background: #1d572b;
+}
+
+.clear-button {
+  margin-top: 10px;
+  background: #f2f3f2;
+  color: #6c6c6c;
+}
+
+.clear-button:hover {
+  background: #e7e9e7;
+}
+
+/* Empty Cart */
+
+.empty-cart {
+  max-width: 600px;
+  margin: 80px auto;
+  text-align: center;
+  background: white;
+  padding: 50px;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(20, 60, 30, 0.07);
+}
+
+.empty-cart-icon {
+  font-size: 70px;
+}
+
+.empty-cart h2 {
+  font-size: 30px;
+}
+
+.empty-cart p {
+  color: #68756c;
+  margin-bottom: 25px;
+}
+
+.shop-button {
+  width: auto;
+  display: inline-block;
+  background: #246b35;
+  color: white;
+}
+
+.shop-button:hover {
+  background: #1d572b;
+}
+
+/* Tablet */
+
+@media (max-width: 900px) {
+
+  .cart-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-summary {
+    position: static;
+  }
+
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+
+  .cart-page {
+    padding: 30px 4%;
+  }
+
+  .cart-header h1 {
+    font-size: 32px;
+  }
+
+  .cart-item {
+    grid-template-columns: 75px 1fr auto;
+    gap: 12px;
+  }
+
+  .cart-item img {
+    width: 75px;
+    height: 75px;
+  }
+
+  .quantity-box {
+    grid-column: 2;
+  }
+
+  .item-total {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .remove-button {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+}
