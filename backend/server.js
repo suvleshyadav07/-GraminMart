@@ -38,6 +38,7 @@ const client = new MongoClient(process.env.MONGO_URI, {
 let usersCollection;
 let productsCollection;
 let ordersCollection;
+let deliveryPartnersCollection;
 
 // =========================================================
 // GMAIL
@@ -77,13 +78,15 @@ async function startServer() {
 
     const db = client.db("graminmart");
 
-    usersCollection = db.collection("users");
-    productsCollection = db.collection("products");
-    ordersCollection = db.collection("orders");
+   usersCollection = db.collection("users");
+productsCollection = db.collection("products");
+ordersCollection = db.collection("orders");
+deliveryPartnersCollection = db.collection("deliveryPartners");
 
-    console.log("Database: graminmart");
-    console.log("Collections: users, products, orders");
-
+console.log("Database: graminmart");
+console.log(
+  "Collections: users, products, orders, deliveryPartners"
+);
     // =======================================================
     // HOME
     // =======================================================
@@ -1021,7 +1024,21 @@ async function startServer() {
       "/api/orders",
       async (req, res) => {
         try {
-          const order = req.body;
+         const order = {
+  ...req.body,
+  sellerId:
+    req.body.sellerId ||
+    req.body.items?.find((item) => item.sellerId)?.sellerId ||
+    "",
+  sellerName:
+    req.body.sellerName ||
+    req.body.items?.find((item) => item.sellerName)?.sellerName ||
+    "",
+  sellerEmail:
+    req.body.sellerEmail ||
+    req.body.items?.find((item) => item.sellerEmail)?.sellerEmail ||
+    "",
+};
 
           if (
             !order.customer ||
@@ -1102,6 +1119,403 @@ async function startServer() {
       }
     );
 
+    // =======================================================
+// ADMIN - DELIVERY PARTNERS
+// =======================================================
+
+// GET ALL DELIVERY PARTNERS
+app.get(
+  "/api/admin/delivery-partners",
+  async (req, res) => {
+    try {
+      const partners =
+        await deliveryPartnersCollection
+          .find({})
+          .sort({ createdAt: -1 })
+          .toArray();
+
+      res.json({
+        success: true,
+        partners,
+      });
+    } catch (error) {
+      console.error(
+        "Get Delivery Partners Error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch delivery partners",
+        error: error.message,
+      });
+    }
+  }
+);
+
+
+// ADD DELIVERY PARTNER
+app.post(
+  "/api/admin/delivery-partners",
+  async (req, res) => {
+    try {
+      const { name, mobile, city } = req.body;
+
+      if (!name || !mobile || !city) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Name, mobile and city are required",
+        });
+      }
+
+      const partner = {
+        name: String(name).trim(),
+        mobile: String(mobile).trim(),
+        city: String(city).trim(),
+        status: "Active",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result =
+        await deliveryPartnersCollection.insertOne(
+          partner
+        );
+
+      res.status(201).json({
+        success: true,
+        message:
+          "Delivery partner added successfully",
+        partner: {
+          ...partner,
+          _id: result.insertedId,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Add Delivery Partner Error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to add delivery partner",
+        error: error.message,
+      });
+    }
+  }
+);
+
+
+// UPDATE DELIVERY PARTNER STATUS
+app.put(
+  "/api/admin/delivery-partners/:id/status",
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid delivery partner ID",
+        });
+      }
+
+      if (!["Active", "Inactive"].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status",
+        });
+      }
+
+      const result =
+        await deliveryPartnersCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              status,
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Delivery partner not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message:
+          "Delivery partner status updated",
+      });
+    } catch (error) {
+      console.error(
+        "Update Partner Status Error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to update partner status",
+        error: error.message,
+      });
+    }
+  }
+);
+
+
+// DELETE DELIVERY PARTNER
+app.delete(
+  "/api/admin/delivery-partners/:id",
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid delivery partner ID",
+        });
+      }
+
+      const result =
+        await deliveryPartnersCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+      if (result.deletedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Delivery partner not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message:
+          "Delivery partner deleted successfully",
+      });
+    } catch (error) {
+      console.error(
+        "Delete Delivery Partner Error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to delete delivery partner",
+        error: error.message,
+      });
+    }
+  }
+);
+
+
+// =======================================================
+// ADMIN - UPDATE ORDER STATUS
+// =======================================================
+
+app.put(
+  "/api/admin/orders/:orderId/status",
+  async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const { status } = req.body;
+
+      if (!ObjectId.isValid(orderId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid order ID",
+        });
+      }
+
+      const allowedStatuses = [
+        "Pending",
+        "Confirmed",
+        "Assigned",
+        "Out for Delivery",
+        "Delivered",
+      ];
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid order status",
+        });
+      }
+
+      const result =
+        await ordersCollection.updateOne(
+          { _id: new ObjectId(orderId) },
+          {
+            $set: {
+              status: status,
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message:
+          "Order status updated successfully",
+      });
+    } catch (error) {
+      console.error(
+        "Update Order Status Error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to update order status",
+        error: error.message,
+      });
+    }
+  }
+);
+
+
+// =======================================================
+// ADMIN - ASSIGN DELIVERY PARTNER
+// =======================================================
+
+app.put(
+  "/api/admin/orders/:orderId/assign-delivery",
+  async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const { partnerId } = req.body;
+
+      if (
+        !ObjectId.isValid(orderId) ||
+        !ObjectId.isValid(partnerId)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid order or partner ID",
+        });
+      }
+
+      const partner =
+        await deliveryPartnersCollection.findOne({
+          _id: new ObjectId(partnerId),
+        });
+
+      if (!partner) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Delivery partner not found",
+        });
+      }
+
+      const result =
+        await ordersCollection.updateOne(
+          { _id: new ObjectId(orderId) },
+          {
+            $set: {
+              deliveryPartnerId: partner._id,
+              deliveryPartnerName: partner.name,
+              deliveryPartnerMobile: partner.mobile,
+              status: "Assigned",
+              updatedAt: new Date(),
+            },
+          }
+        );
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message:
+          "Delivery partner assigned successfully",
+      });
+    } catch (error) {
+      console.error(
+        "Assign Delivery Error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to assign delivery partner",
+        error: error.message,
+      });
+    }
+  }
+);
+// MAKE USER DELIVERY PARTNER
+app.post("/api/make-delivery-partner", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const emailValue = email.trim().toLowerCase();
+
+    const result = await usersCollection.updateOne(
+      { email: emailValue },
+      {
+        $set: {
+          role: "delivery_partner",
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User is now delivery partner",
+    });
+  } catch (error) {
+    console.error("Make Delivery Partner Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
     // =======================================================
     // START EXPRESS SERVER
     // =======================================================

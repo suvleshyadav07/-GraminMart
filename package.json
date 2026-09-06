@@ -1,10 +1,12 @@
 {
   "name": "graminmart",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "GraminMart",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "server": "node server.js",
+    "client": "npm run dev --prefix frontend",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
   },
   "keywords": [],
   "author": "",
@@ -20,5 +22,8 @@
     "mongoose": "^9.9.4",
     "nodemailer": "^9.1.1",
     "react-router-dom": "^7.18.3"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

@@ -46,27 +46,51 @@ function Login() {
         return;
       }
 
-      alert(`Welcome ${data.user.name}! 🎉`);
+      if (!data.user) {
+        alert("User information not received.");
+        return;
+      }
 
+      // Save logged-in user
       localStorage.setItem(
         "graminmartUser",
         JSON.stringify(data.user)
       );
 
-      // Redirect according to user role
-      if (data.user.role === "admin") {
+      alert(`Welcome ${data.user.name}!`);
+
+      // Normalize role
+      const role = String(data.user.role || "customer")
+        .toLowerCase()
+        .trim();
+
+      // =========================
+      // ROLE BASED REDIRECT
+      // =========================
+
+      if (role === "admin") {
         window.location.href = "/admin";
-      } else if (data.user.role === "shop_owner") {
-        window.location.href = "/shop-owner";
-      } else if (data.user.role === "delivery_boy") {
-        window.location.href = "/delivery";
-      } else {
-        if (data.user.role === "admin") {
-  window.location.href = "/admin";
-} else {
-  window.location.href = "/";
-}
+        return;
       }
+
+      if (
+        role === "seller" ||
+        role === "shop_owner"
+      ) {
+        window.location.href = "/seller";
+        return;
+      }
+
+      if (
+        role === "delivery_partner" ||
+        role === "delivery"
+      ) {
+        window.location.href = "/delivery";
+        return;
+      }
+
+      // Customer
+      window.location.href = "/";
 
     } catch (error) {
       console.error("Login Error:", error);
@@ -101,6 +125,7 @@ function Login() {
             placeholder="Enter your email"
             value={formData.email}
             onChange={handleChange}
+            required
           />
 
           <label>Password</label>
@@ -111,6 +136,7 @@ function Login() {
             placeholder="Enter your password"
             value={formData.password}
             onChange={handleChange}
+            required
           />
 
           <p>
@@ -119,7 +145,10 @@ function Login() {
             </a>
           </p>
 
-          <button type="submit" disabled={loading}>
+          <button
+            type="submit"
+            disabled={loading}
+          >
             {loading ? "Logging in..." : "Login"}
           </button>
 

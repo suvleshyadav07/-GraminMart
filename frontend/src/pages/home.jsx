@@ -12,6 +12,14 @@ function Home() {
     window.location.href = "/login";
   };
 
+  const goToProducts = () => {
+    window.location.href = "/products";
+  };
+
+  const goToSeller = () => {
+    window.location.href = "/seller";
+  };
+
   return (
     <div className="home">
 
@@ -24,7 +32,7 @@ function Home() {
 
         <div className="nav-links">
           <a href="/">Home</a>
-          <a href="#products">Products</a>
+          <a href="/products">Products</a>
           <a href="#about">About</a>
           <a href="#contact">Contact</a>
         </div>
@@ -84,13 +92,21 @@ function Home() {
           </p>
 
           <div className="hero-buttons">
-            <button className="shop-btn">
+
+            <button
+              className="shop-btn"
+              onClick={goToProducts}
+            >
               🛒 Shop Now
             </button>
 
-            <button className="seller-btn">
+            <button
+              className="seller-btn"
+              onClick={goToSeller}
+            >
               🏪 Become a Seller
             </button>
+
           </div>
 
         </div>
@@ -113,25 +129,37 @@ function Home() {
 
         <div className="category-grid">
 
-          <div className="category-card">
+          <div
+            className="category-card"
+            onClick={goToProducts}
+          >
             <div className="category-icon">🥕</div>
             <h3>Vegetables</h3>
             <p>Fresh & Organic</p>
           </div>
 
-          <div className="category-card">
+          <div
+            className="category-card"
+            onClick={goToProducts}
+          >
             <div className="category-icon">🌾</div>
             <h3>Grocery</h3>
             <p>Daily Essentials</p>
           </div>
 
-          <div className="category-card">
+          <div
+            className="category-card"
+            onClick={goToProducts}
+          >
             <div className="category-icon">🥛</div>
             <h3>Dairy</h3>
             <p>Fresh Dairy</p>
           </div>
 
-          <div className="category-card">
+          <div
+            className="category-card"
+            onClick={goToProducts}
+          >
             <div className="category-icon">🍎</div>
             <h3>Fruits</h3>
             <p>Fresh Fruits</p>
@@ -202,7 +230,7 @@ function Home() {
           </p>
         </div>
 
-        <button>
+        <button onClick={goToProducts}>
           Start Shopping →
         </button>
 
@@ -220,7 +248,7 @@ function Home() {
         </p>
 
         <div className="copyright">
-          © 2026 GraminMart. All rights reserved.
+          © 2026 GraminMart. All rights reserved.Founded by Suvlesh Yadav
         </div>
 
       </footer>

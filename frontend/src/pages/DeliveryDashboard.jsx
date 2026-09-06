@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "https://graminmart-backend.onrender.com";
 
 function DeliveryDashboard() {
   const [user, setUser] = useState(null);

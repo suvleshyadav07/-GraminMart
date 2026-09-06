@@ -50,14 +50,50 @@ const otpStore = new Map();
 // GMAIL
 // =========================================================
 
+const EMAIL_USER = String(process.env.EMAIL_USER || "").trim();
+const EMAIL_PASS = String(process.env.EMAIL_PASS || "")
+  .replace(/\s/g, "")
+  .trim();
+
+console.log("📧 EMAIL_USER:", EMAIL_USER);
+console.log("📧 EMAIL_PASS loaded:", EMAIL_PASS ? "YES" : "NO");
+console.log("📧 EMAIL_PASS length:", EMAIL_PASS.length);
+
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
   },
 });
+transporter.verify()
+app.get("/api/test-email", async (req, res) => {
+  try {
+    const info = await transporter.sendMail({
+      from: EMAIL_USER,
+      to: EMAIL_USER,
+      subject: "GraminMart Test Email",
+      text: "Test email from GraminMart",
+    });
 
+    console.log("TEST EMAIL SENT:", info.messageId);
+
+    res.json({
+      success: true,
+      message: "Test email sent successfully"
+    });
+  } catch (error) {
+    console.error("TEST EMAIL ERROR:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+  
 // =========================================================
 // HELPERS
 // =========================================================
@@ -146,6 +182,123 @@ app.post("/api/make-delivery-partner", async (req, res) => {
     });
   }
 });
+
+
+// =========================================================
+// MAKE SELLER
+// =========================================================
+
+app.post("/api/make-seller", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    if (!usersCollection) {
+      return res.status(503).json({
+        success: false,
+        message: "Database is not ready yet",
+      });
+    }
+
+    const emailValue = cleanEmail(email);
+
+    const result = await usersCollection.updateOne(
+      { email: emailValue },
+      {
+        $set: {
+          role: "seller",
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "User is now a seller",
+    });
+
+  } catch (error) {
+    console.error("MAKE SELLER ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to make seller",
+      error: error.message,
+    });
+  }
+});
+
+console.log("✅ MAKE SELLER ROUTE REGISTERED");
+// =========================================================
+// MAKE SELLER ROUTE
+// =========================================================
+
+app.post("/api/make-seller", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required"
+      });
+    }
+
+    if (!usersCollection) {
+      return res.status(503).json({
+        success: false,
+        message: "Database is not ready yet"
+      });
+    }
+
+    const emailValue = cleanEmail(email);
+
+    const result = await usersCollection.updateOne(
+      { email: emailValue },
+      {
+        $set: {
+          role: "seller",
+          updatedAt: new Date()
+        }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "User is now a seller"
+    });
+
+  } catch (error) {
+    console.error("MAKE SELLER ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to make seller",
+      error: error.message
+    });
+  }
+});
+
 
 // =========================================================
 // START SERVER
@@ -462,7 +615,7 @@ async function startServer() {
           });
 
           await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: EMAIL_USER,
             to: emailValue,
             subject:
               "GraminMart Password Reset OTP",
@@ -476,10 +629,7 @@ async function startServer() {
             message: "OTP sent successfully",
           });
         } catch (error) {
-          console.error(
-            "FORGOT PASSWORD ERROR:",
-            error
-          );
+          console.error("FORGOT PASSWORD ERROR MESSAGE:", error.message);
 
           return res.status(500).json({
             success: false,
