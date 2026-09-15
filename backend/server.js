@@ -5,7 +5,6 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const { MongoClient, ObjectId } = require("mongodb");
-const nodemailer = require("nodemailer");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -41,16 +40,38 @@ let ordersCollection;
 let deliveryPartnersCollection;
 
 // =========================================================
-// GMAIL
+// EMAIL - RESEND
 // =========================================================
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+async function sendOTPEmail(to, otp) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: process.env.EMAIL_FROM,
+      to: [to],
+      subject: "GraminMart Password Reset OTP",
+      text:
+        `Your GraminMart password reset OTP is ${otp}. ` +
+        `This OTP is valid for 10 minutes.`,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error("Resend Email Error:", data);
+
+    throw new Error(
+      data.message || "Failed to send email"
+    );
+  }
+
+  return data;
+}
 
 // =========================================================
 // OTP STORAGE
@@ -78,15 +99,17 @@ async function startServer() {
 
     const db = client.db("graminmart");
 
-   usersCollection = db.collection("users");
-productsCollection = db.collection("products");
-ordersCollection = db.collection("orders");
-deliveryPartnersCollection = db.collection("deliveryPartners");
+    usersCollection = db.collection("users");
+    productsCollection = db.collection("products");
+    ordersCollection = db.collection("orders");
+    deliveryPartnersCollection =
+      db.collection("deliveryPartners");
 
-console.log("Database: graminmart");
-console.log(
-  "Collections: users, products, orders, deliveryPartners"
-);
+    console.log("Database: graminmart");
+    console.log(
+      "Collections: users, products, orders, deliveryPartners"
+    );
+
     // =======================================================
     // HOME
     // =======================================================
@@ -124,12 +147,13 @@ console.log(
         const cleanMobile = mobile.trim();
         const cleanEmail = email.toLowerCase().trim();
 
-        const existingUser = await usersCollection.findOne({
-          $or: [
-            { email: cleanEmail },
-            { mobile: cleanMobile },
-          ],
-        });
+        const existingUser =
+          await usersCollection.findOne({
+            $or: [
+              { email: cleanEmail },
+              { mobile: cleanMobile },
+            ],
+          });
 
         if (existingUser) {
           return res.status(409).json({
@@ -148,14 +172,15 @@ console.log(
             ? role
             : "customer";
 
-        const result = await usersCollection.insertOne({
-          name: cleanName,
-          mobile: cleanMobile,
-          email: cleanEmail,
-          password: hashedPassword,
-          role: userRole,
-          createdAt: new Date(),
-        });
+        const result =
+          await usersCollection.insertOne({
+            name: cleanName,
+            mobile: cleanMobile,
+            email: cleanEmail,
+            password: hashedPassword,
+            role: userRole,
+            createdAt: new Date(),
+          });
 
         res.status(201).json({
           success: true,
@@ -193,9 +218,10 @@ console.log(
 
         const cleanEmail = email.toLowerCase().trim();
 
-        const user = await usersCollection.findOne({
-          email: cleanEmail,
-        });
+        const user =
+          await usersCollection.findOne({
+            email: cleanEmail,
+          });
 
         if (!user) {
           return res.status(401).json({
@@ -204,10 +230,11 @@ console.log(
           });
         }
 
-        const passwordMatch = await bcrypt.compare(
-          password,
-          user.password
-        );
+        const passwordMatch =
+          await bcrypt.compare(
+            password,
+            user.password
+          );
 
         if (!passwordMatch) {
           return res.status(401).json({
@@ -255,15 +282,16 @@ console.log(
 
         const cleanEmail = email.toLowerCase().trim();
 
-        const result = await usersCollection.updateOne(
-          { email: cleanEmail },
-          {
-            $set: {
-              role: "admin",
-              updatedAt: new Date(),
-            },
-          }
-        );
+        const result =
+          await usersCollection.updateOne(
+            { email: cleanEmail },
+            {
+              $set: {
+                role: "admin",
+                updatedAt: new Date(),
+              },
+            }
+          );
 
         if (result.matchedCount === 0) {
           return res.status(404).json({
@@ -293,15 +321,16 @@ console.log(
 
     app.get("/api/admin/users", async (req, res) => {
       try {
-        const users = await usersCollection
-          .find({})
-          .project({
-            password: 0,
-          })
-          .sort({
-            createdAt: -1,
-          })
-          .toArray();
+        const users =
+          await usersCollection
+            .find({})
+            .project({
+              password: 0,
+            })
+            .sort({
+              createdAt: -1,
+            })
+            .toArray();
 
         res.json({
           success: true,
@@ -335,16 +364,19 @@ console.log(
             });
           }
 
-          const cleanEmail = email.toLowerCase().trim();
+          const cleanEmail =
+            email.toLowerCase().trim();
 
-          const user = await usersCollection.findOne({
-            email: cleanEmail,
-          });
+          const user =
+            await usersCollection.findOne({
+              email: cleanEmail,
+            });
 
           if (!user) {
             return res.status(404).json({
               success: false,
-              message: "No account found with this email",
+              message:
+                "No account found with this email",
             });
           }
 
@@ -354,31 +386,40 @@ console.log(
 
           otpStore.set(cleanEmail, {
             otp,
-            expiresAt: Date.now() + 10 * 60 * 1000,
+            expiresAt:
+              Date.now() + 10 * 60 * 1000,
             verified: false,
           });
 
-          await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: cleanEmail,
-            subject: "GraminMart Password Reset OTP",
-            text:
-              `Your GraminMart password reset OTP is ${otp}. ` +
-              `This OTP is valid for 10 minutes.`,
-          });
+          // ===================================================
+          // SEND OTP USING RESEND
+          // ===================================================
 
-          console.log("OTP sent to:", cleanEmail);
+          await sendOTPEmail(
+            cleanEmail,
+            otp
+          );
+
+          console.log(
+            "OTP sent to:",
+            cleanEmail
+          );
 
           res.json({
             success: true,
-            message: "OTP sent successfully to your email",
+            message:
+              "OTP sent successfully to your email",
           });
         } catch (error) {
-          console.error("OTP Email Error:", error);
+          console.error(
+            "OTP Email Error:",
+            error
+          );
 
           res.status(500).json({
             success: false,
-            message: "Failed to send OTP email",
+            message:
+              "Failed to send OTP email",
             error: error.message,
           });
         }
@@ -401,13 +442,16 @@ console.log(
           if (!email || !otp) {
             return res.status(400).json({
               success: false,
-              message: "Email and OTP are required",
+              message:
+                "Email and OTP are required",
             });
           }
 
-          const cleanEmail = email.toLowerCase().trim();
+          const cleanEmail =
+            email.toLowerCase().trim();
 
-          const savedOtp = otpStore.get(cleanEmail);
+          const savedOtp =
+            otpStore.get(cleanEmail);
 
           if (!savedOtp) {
             return res.status(400).json({
@@ -417,7 +461,10 @@ console.log(
             });
           }
 
-          if (Date.now() > savedOtp.expiresAt) {
+          if (
+            Date.now() >
+            savedOtp.expiresAt
+          ) {
             otpStore.delete(cleanEmail);
 
             return res.status(400).json({
@@ -427,7 +474,10 @@ console.log(
             });
           }
 
-          if (otp.toString() !== savedOtp.otp) {
+          if (
+            otp.toString() !==
+            savedOtp.otp
+          ) {
             return res.status(400).json({
               success: false,
               message: "Invalid OTP",
@@ -438,14 +488,19 @@ console.log(
 
           res.json({
             success: true,
-            message: "OTP verified successfully",
+            message:
+              "OTP verified successfully",
           });
         } catch (error) {
-          console.error("Verify OTP Error:", error);
+          console.error(
+            "Verify OTP Error:",
+            error
+          );
 
           res.status(500).json({
             success: false,
-            message: "OTP verification failed",
+            message:
+              "OTP verification failed",
             error: error.message,
           });
         }
@@ -481,9 +536,11 @@ console.log(
             });
           }
 
-          const cleanEmail = email.toLowerCase().trim();
+          const cleanEmail =
+            email.toLowerCase().trim();
 
-          const savedOtp = otpStore.get(cleanEmail);
+          const savedOtp =
+            otpStore.get(cleanEmail);
 
           if (
             !savedOtp ||
@@ -497,15 +554,20 @@ console.log(
           }
 
           const hashedPassword =
-            await bcrypt.hash(newPassword, 10);
+            await bcrypt.hash(
+              newPassword,
+              10
+            );
 
           const result =
             await usersCollection.updateOne(
               { email: cleanEmail },
               {
                 $set: {
-                  password: hashedPassword,
-                  updatedAt: new Date(),
+                  password:
+                    hashedPassword,
+                  updatedAt:
+                    new Date(),
                 },
               }
             );
@@ -513,7 +575,8 @@ console.log(
           if (result.matchedCount === 0) {
             return res.status(404).json({
               success: false,
-              message: "User not found",
+              message:
+                "User not found",
             });
           }
 
@@ -572,10 +635,14 @@ console.log(
           }
 
           const cleanName = name.trim();
-          const cleanCategory = category.trim();
+          const cleanCategory =
+            category.trim();
 
-          const productPrice = Number(price);
-          const productStock = Number(stock || 0);
+          const productPrice =
+            Number(price);
+
+          const productStock =
+            Number(stock || 0);
 
           if (
             Number.isNaN(productPrice) ||
@@ -583,7 +650,8 @@ console.log(
           ) {
             return res.status(400).json({
               success: false,
-              message: "Please enter a valid price",
+              message:
+                "Please enter a valid price",
             });
           }
 
@@ -615,11 +683,14 @@ console.log(
           };
 
           const result =
-            await productsCollection.insertOne(product);
+            await productsCollection.insertOne(
+              product
+            );
 
           res.status(201).json({
             success: true,
-            message: "Product added successfully",
+            message:
+              "Product added successfully",
             product: {
               _id: result.insertedId,
               ...product,
@@ -633,7 +704,8 @@ console.log(
 
           res.status(500).json({
             success: false,
-            message: "Failed to add product",
+            message:
+              "Failed to add product",
             error: error.message,
           });
         }
@@ -673,7 +745,8 @@ console.log(
 
           res.status(500).json({
             success: false,
-            message: "Failed to fetch products",
+            message:
+              "Failed to fetch products",
             error: error.message,
           });
         }
@@ -684,27 +757,27 @@ console.log(
     // SHOP OWNER - GET OWN PRODUCTS
     // =======================================================
 
-    // IMPORTANT:
-    // This route is before /api/products/:id
-    // so "seller" is not treated as a product ID.
-
     app.get(
       "/api/products/seller/:sellerId",
       async (req, res) => {
         try {
-          const { sellerId } = req.params;
+          const {
+            sellerId,
+          } = req.params;
 
           if (!sellerId) {
             return res.status(400).json({
               success: false,
-              message: "Seller ID is required",
+              message:
+                "Seller ID is required",
             });
           }
 
           const products =
             await productsCollection
               .find({
-                sellerId: sellerId,
+                sellerId:
+                  sellerId,
               })
               .sort({
                 createdAt: -1,
@@ -775,12 +848,15 @@ console.log(
       "/api/products/:id",
       async (req, res) => {
         try {
-          const { id } = req.params;
+          const {
+            id,
+          } = req.params;
 
           if (!ObjectId.isValid(id)) {
             return res.status(400).json({
               success: false,
-              message: "Invalid product ID",
+              message:
+                "Invalid product ID",
             });
           }
 
@@ -792,7 +868,8 @@ console.log(
           if (!product) {
             return res.status(404).json({
               success: false,
-              message: "Product not found",
+              message:
+                "Product not found",
             });
           }
 
@@ -824,12 +901,15 @@ console.log(
       "/api/products/:id",
       async (req, res) => {
         try {
-          const { id } = req.params;
+          const {
+            id,
+          } = req.params;
 
           if (!ObjectId.isValid(id)) {
             return res.status(400).json({
               success: false,
-              message: "Invalid product ID",
+              message:
+                "Invalid product ID",
             });
           }
 
@@ -844,7 +924,8 @@ console.log(
           } = req.body;
 
           const updateData = {
-            updatedAt: new Date(),
+            updatedAt:
+              new Date(),
           };
 
           if (name !== undefined) {
@@ -856,19 +937,26 @@ console.log(
               });
             }
 
-            updateData.name = name.trim();
+            updateData.name =
+              name.trim();
           }
 
-          if (description !== undefined) {
+          if (
+            description !==
+            undefined
+          ) {
             updateData.description =
               description.trim();
           }
 
           if (price !== undefined) {
-            const productPrice = Number(price);
+            const productPrice =
+              Number(price);
 
             if (
-              Number.isNaN(productPrice) ||
+              Number.isNaN(
+                productPrice
+              ) ||
               productPrice < 0
             ) {
               return res.status(400).json({
@@ -878,10 +966,14 @@ console.log(
               });
             }
 
-            updateData.price = productPrice;
+            updateData.price =
+              productPrice;
           }
 
-          if (category !== undefined) {
+          if (
+            category !==
+            undefined
+          ) {
             if (!category.trim()) {
               return res.status(400).json({
                 success: false,
@@ -895,10 +987,13 @@ console.log(
           }
 
           if (stock !== undefined) {
-            const productStock = Number(stock);
+            const productStock =
+              Number(stock);
 
             if (
-              Number.isNaN(productStock) ||
+              Number.isNaN(
+                productStock
+              ) ||
               productStock < 0
             ) {
               return res.status(400).json({
@@ -908,28 +1003,36 @@ console.log(
               });
             }
 
-            updateData.stock = productStock;
+            updateData.stock =
+              productStock;
           }
 
           if (image !== undefined) {
-            updateData.image = image;
+            updateData.image =
+              image;
           }
 
           if (status !== undefined) {
-            updateData.status = status;
+            updateData.status =
+              status;
           }
 
           const result =
             await productsCollection.updateOne(
               {
-                _id: new ObjectId(id),
+                _id:
+                  new ObjectId(id),
               },
               {
-                $set: updateData,
+                $set:
+                  updateData,
               }
             );
 
-          if (result.matchedCount === 0) {
+          if (
+            result.matchedCount ===
+            0
+          ) {
             return res.status(404).json({
               success: false,
               message:
@@ -939,14 +1042,16 @@ console.log(
 
           const updatedProduct =
             await productsCollection.findOne({
-              _id: new ObjectId(id),
+              _id:
+                new ObjectId(id),
             });
 
           res.json({
             success: true,
             message:
               "Product updated successfully",
-            product: updatedProduct,
+            product:
+              updatedProduct,
           });
         } catch (error) {
           console.error(
@@ -972,7 +1077,9 @@ console.log(
       "/api/products/:id",
       async (req, res) => {
         try {
-          const { id } = req.params;
+          const {
+            id,
+          } = req.params;
 
           if (!ObjectId.isValid(id)) {
             return res.status(400).json({
@@ -984,10 +1091,14 @@ console.log(
 
           const result =
             await productsCollection.deleteOne({
-              _id: new ObjectId(id),
+              _id:
+                new ObjectId(id),
             });
 
-          if (result.deletedCount === 0) {
+          if (
+            result.deletedCount ===
+            0
+          ) {
             return res.status(404).json({
               success: false,
               message:
@@ -1024,39 +1135,57 @@ console.log(
       "/api/orders",
       async (req, res) => {
         try {
-         const order = {
-  ...req.body,
-  sellerId:
-    req.body.sellerId ||
-    req.body.items?.find((item) => item.sellerId)?.sellerId ||
-    "",
-  sellerName:
-    req.body.sellerName ||
-    req.body.items?.find((item) => item.sellerName)?.sellerName ||
-    "",
-  sellerEmail:
-    req.body.sellerEmail ||
-    req.body.items?.find((item) => item.sellerEmail)?.sellerEmail ||
-    "",
-};
+          const order = {
+            ...req.body,
+            sellerId:
+              req.body.sellerId ||
+              req.body.items?.find(
+                (item) =>
+                  item.sellerId
+              )?.sellerId ||
+              "",
+            sellerName:
+              req.body.sellerName ||
+              req.body.items?.find(
+                (item) =>
+                  item.sellerName
+              )?.sellerName ||
+              "",
+            sellerEmail:
+              req.body.sellerEmail ||
+              req.body.items?.find(
+                (item) =>
+                  item.sellerEmail
+              )?.sellerEmail ||
+              "",
+          };
 
           if (
             !order.customer ||
             !order.items ||
-            !Array.isArray(order.items) ||
-            order.items.length === 0
+            !Array.isArray(
+              order.items
+            ) ||
+            order.items.length ===
+              0
           ) {
             return res.status(400).json({
               success: false,
-              message: "Invalid order data",
+              message:
+                "Invalid order data",
             });
           }
 
-          order.createdAt = new Date();
-          order.status = "Pending";
+          order.createdAt =
+            new Date();
+
+          order.status =
+            "Pending";
 
           const result =
-            await ordersCollection.insertOne(order);
+            await ordersCollection.insertOne(
+              order
+            );
 
           res.status(201).json({
             success: true,
@@ -1064,7 +1193,8 @@ console.log(
               "Order placed successfully",
             order: {
               ...order,
-              _id: result.insertedId,
+              _id:
+                result.insertedId,
             },
           });
         } catch (error) {
@@ -1120,402 +1250,534 @@ console.log(
     );
 
     // =======================================================
-// ADMIN - DELIVERY PARTNERS
-// =======================================================
+    // ADMIN - DELIVERY PARTNERS
+    // =======================================================
 
-// GET ALL DELIVERY PARTNERS
-app.get(
-  "/api/admin/delivery-partners",
-  async (req, res) => {
-    try {
-      const partners =
-        await deliveryPartnersCollection
-          .find({})
-          .sort({ createdAt: -1 })
-          .toArray();
+    // GET ALL DELIVERY PARTNERS
 
-      res.json({
-        success: true,
-        partners,
-      });
-    } catch (error) {
-      console.error(
-        "Get Delivery Partners Error:",
-        error
-      );
+    app.get(
+      "/api/admin/delivery-partners",
+      async (req, res) => {
+        try {
+          const partners =
+            await deliveryPartnersCollection
+              .find({})
+              .sort({
+                createdAt: -1,
+              })
+              .toArray();
 
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch delivery partners",
-        error: error.message,
-      });
-    }
-  }
-);
+          res.json({
+            success: true,
+            partners,
+          });
+        } catch (error) {
+          console.error(
+            "Get Delivery Partners Error:",
+            error
+          );
 
-
-// ADD DELIVERY PARTNER
-app.post(
-  "/api/admin/delivery-partners",
-  async (req, res) => {
-    try {
-      const { name, mobile, city } = req.body;
-
-      if (!name || !mobile || !city) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Name, mobile and city are required",
-        });
-      }
-
-      const partner = {
-        name: String(name).trim(),
-        mobile: String(mobile).trim(),
-        city: String(city).trim(),
-        status: "Active",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const result =
-        await deliveryPartnersCollection.insertOne(
-          partner
-        );
-
-      res.status(201).json({
-        success: true,
-        message:
-          "Delivery partner added successfully",
-        partner: {
-          ...partner,
-          _id: result.insertedId,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "Add Delivery Partner Error:",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to add delivery partner",
-        error: error.message,
-      });
-    }
-  }
-);
-
-
-// UPDATE DELIVERY PARTNER STATUS
-app.put(
-  "/api/admin/delivery-partners/:id/status",
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      if (!ObjectId.isValid(id)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid delivery partner ID",
-        });
-      }
-
-      if (!["Active", "Inactive"].includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid status",
-        });
-      }
-
-      const result =
-        await deliveryPartnersCollection.updateOne(
-          { _id: new ObjectId(id) },
-          {
-            $set: {
-              status,
-              updatedAt: new Date(),
-            },
-          }
-        );
-
-      if (result.matchedCount === 0) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Delivery partner not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        message:
-          "Delivery partner status updated",
-      });
-    } catch (error) {
-      console.error(
-        "Update Partner Status Error:",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to update partner status",
-        error: error.message,
-      });
-    }
-  }
-);
-
-
-// DELETE DELIVERY PARTNER
-app.delete(
-  "/api/admin/delivery-partners/:id",
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      if (!ObjectId.isValid(id)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid delivery partner ID",
-        });
-      }
-
-      const result =
-        await deliveryPartnersCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
-
-      if (result.deletedCount === 0) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Delivery partner not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        message:
-          "Delivery partner deleted successfully",
-      });
-    } catch (error) {
-      console.error(
-        "Delete Delivery Partner Error:",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to delete delivery partner",
-        error: error.message,
-      });
-    }
-  }
-);
-
-
-// =======================================================
-// ADMIN - UPDATE ORDER STATUS
-// =======================================================
-
-app.put(
-  "/api/admin/orders/:orderId/status",
-  async (req, res) => {
-    try {
-      const { orderId } = req.params;
-      const { status } = req.body;
-
-      if (!ObjectId.isValid(orderId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid order ID",
-        });
-      }
-
-      const allowedStatuses = [
-        "Pending",
-        "Confirmed",
-        "Assigned",
-        "Out for Delivery",
-        "Delivered",
-      ];
-
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid order status",
-        });
-      }
-
-      const result =
-        await ordersCollection.updateOne(
-          { _id: new ObjectId(orderId) },
-          {
-            $set: {
-              status: status,
-              updatedAt: new Date(),
-            },
-          }
-        );
-
-      if (result.matchedCount === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        message:
-          "Order status updated successfully",
-      });
-    } catch (error) {
-      console.error(
-        "Update Order Status Error:",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to update order status",
-        error: error.message,
-      });
-    }
-  }
-);
-
-
-// =======================================================
-// ADMIN - ASSIGN DELIVERY PARTNER
-// =======================================================
-
-app.put(
-  "/api/admin/orders/:orderId/assign-delivery",
-  async (req, res) => {
-    try {
-      const { orderId } = req.params;
-      const { partnerId } = req.body;
-
-      if (
-        !ObjectId.isValid(orderId) ||
-        !ObjectId.isValid(partnerId)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid order or partner ID",
-        });
-      }
-
-      const partner =
-        await deliveryPartnersCollection.findOne({
-          _id: new ObjectId(partnerId),
-        });
-
-      if (!partner) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Delivery partner not found",
-        });
-      }
-
-      const result =
-        await ordersCollection.updateOne(
-          { _id: new ObjectId(orderId) },
-          {
-            $set: {
-              deliveryPartnerId: partner._id,
-              deliveryPartnerName: partner.name,
-              deliveryPartnerMobile: partner.mobile,
-              status: "Assigned",
-              updatedAt: new Date(),
-            },
-          }
-        );
-
-      if (result.matchedCount === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        message:
-          "Delivery partner assigned successfully",
-      });
-    } catch (error) {
-      console.error(
-        "Assign Delivery Error:",
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          "Failed to assign delivery partner",
-        error: error.message,
-      });
-    }
-  }
-);
-// MAKE USER DELIVERY PARTNER
-app.post("/api/make-delivery-partner", async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required",
-      });
-    }
-
-    const emailValue = email.trim().toLowerCase();
-
-    const result = await usersCollection.updateOne(
-      { email: emailValue },
-      {
-        $set: {
-          role: "delivery_partner",
-          updatedAt: new Date(),
-        },
+          res.status(500).json({
+            success: false,
+            message:
+              "Failed to fetch delivery partners",
+            error:
+              error.message,
+          });
+        }
       }
     );
 
-    if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
+    // ADD DELIVERY PARTNER
 
-    res.json({
-      success: true,
-      message: "User is now delivery partner",
-    });
-  } catch (error) {
-    console.error("Make Delivery Partner Error:", error);
+    app.post(
+      "/api/admin/delivery-partners",
+      async (req, res) => {
+        try {
+          const {
+            name,
+            mobile,
+            city,
+          } = req.body;
 
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
-});
+          if (
+            !name ||
+            !mobile ||
+            !city
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Name, mobile and city are required",
+            });
+          }
+
+          const partner = {
+            name:
+              String(name).trim(),
+            mobile:
+              String(mobile).trim(),
+            city:
+              String(city).trim(),
+            status:
+              "Active",
+            createdAt:
+              new Date(),
+            updatedAt:
+              new Date(),
+          };
+
+          const result =
+            await deliveryPartnersCollection.insertOne(
+              partner
+            );
+
+          res.status(201).json({
+            success: true,
+            message:
+              "Delivery partner added successfully",
+            partner: {
+              ...partner,
+              _id:
+                result.insertedId,
+            },
+          });
+        } catch (error) {
+          console.error(
+            "Add Delivery Partner Error:",
+            error
+          );
+
+          res.status(500).json({
+            success: false,
+            message:
+              "Failed to add delivery partner",
+            error:
+              error.message,
+          });
+        }
+      }
+    );
+
+    // UPDATE DELIVERY PARTNER STATUS
+
+    app.put(
+      "/api/admin/delivery-partners/:id/status",
+      async (req, res) => {
+        try {
+          const {
+            id,
+          } = req.params;
+
+          const {
+            status,
+          } = req.body;
+
+          if (
+            !ObjectId.isValid(id)
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Invalid delivery partner ID",
+            });
+          }
+
+          if (
+            ![
+              "Active",
+              "Inactive",
+            ].includes(status)
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Invalid status",
+            });
+          }
+
+          const result =
+            await deliveryPartnersCollection.updateOne(
+              {
+                _id:
+                  new ObjectId(id),
+              },
+              {
+                $set: {
+                  status,
+                  updatedAt:
+                    new Date(),
+                },
+              }
+            );
+
+          if (
+            result.matchedCount ===
+            0
+          ) {
+            return res.status(404).json({
+              success: false,
+              message:
+                "Delivery partner not found",
+            });
+          }
+
+          res.json({
+            success: true,
+            message:
+              "Delivery partner status updated",
+          });
+        } catch (error) {
+          console.error(
+            "Update Partner Status Error:",
+            error
+          );
+
+          res.status(500).json({
+            success: false,
+            message:
+              "Failed to update partner status",
+            error:
+              error.message,
+          });
+        }
+      }
+    );
+
+    // DELETE DELIVERY PARTNER
+
+    app.delete(
+      "/api/admin/delivery-partners/:id",
+      async (req, res) => {
+        try {
+          const {
+            id,
+          } = req.params;
+
+          if (
+            !ObjectId.isValid(id)
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Invalid delivery partner ID",
+            });
+          }
+
+          const result =
+            await deliveryPartnersCollection.deleteOne({
+              _id:
+                new ObjectId(id),
+            });
+
+          if (
+            result.deletedCount ===
+            0
+          ) {
+            return res.status(404).json({
+              success: false,
+              message:
+                "Delivery partner not found",
+            });
+          }
+
+          res.json({
+            success: true,
+            message:
+              "Delivery partner deleted successfully",
+          });
+        } catch (error) {
+          console.error(
+            "Delete Delivery Partner Error:",
+            error
+          );
+
+          res.status(500).json({
+            success: false,
+            message:
+              "Failed to delete delivery partner",
+            error:
+              error.message,
+          });
+        }
+      }
+    );
+
+    // =======================================================
+    // ADMIN - UPDATE ORDER STATUS
+    // =======================================================
+
+    app.put(
+      "/api/admin/orders/:orderId/status",
+      async (req, res) => {
+        try {
+          const {
+            orderId,
+          } = req.params;
+
+          const {
+            status,
+          } = req.body;
+
+          if (
+            !ObjectId.isValid(
+              orderId
+            )
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Invalid order ID",
+            });
+          }
+
+          const allowedStatuses = [
+            "Pending",
+            "Confirmed",
+            "Assigned",
+            "Out for Delivery",
+            "Delivered",
+          ];
+
+          if (
+            !allowedStatuses.includes(
+              status
+            )
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Invalid order status",
+            });
+          }
+
+          const result =
+            await ordersCollection.updateOne(
+              {
+                _id:
+                  new ObjectId(
+                    orderId
+                  ),
+              },
+              {
+                $set: {
+                  status:
+                    status,
+                  updatedAt:
+                    new Date(),
+                },
+              }
+            );
+
+          if (
+            result.matchedCount ===
+            0
+          ) {
+            return res.status(404).json({
+              success: false,
+              message:
+                "Order not found",
+            });
+          }
+
+          res.json({
+            success: true,
+            message:
+              "Order status updated successfully",
+          });
+        } catch (error) {
+          console.error(
+            "Update Order Status Error:",
+            error
+          );
+
+          res.status(500).json({
+            success: false,
+            message:
+              "Failed to update order status",
+            error:
+              error.message,
+          });
+        }
+      }
+    );
+
+    // =======================================================
+    // ADMIN - ASSIGN DELIVERY PARTNER
+    // =======================================================
+
+    app.put(
+      "/api/admin/orders/:orderId/assign-delivery",
+      async (req, res) => {
+        try {
+          const {
+            orderId,
+          } = req.params;
+
+          const {
+            partnerId,
+          } = req.body;
+
+          if (
+            !ObjectId.isValid(
+              orderId
+            ) ||
+            !ObjectId.isValid(
+              partnerId
+            )
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Invalid order or partner ID",
+            });
+          }
+
+          const partner =
+            await deliveryPartnersCollection.findOne({
+              _id:
+                new ObjectId(
+                  partnerId
+                ),
+            });
+
+          if (!partner) {
+            return res.status(404).json({
+              success: false,
+              message:
+                "Delivery partner not found",
+            });
+          }
+
+          const result =
+            await ordersCollection.updateOne(
+              {
+                _id:
+                  new ObjectId(
+                    orderId
+                  ),
+              },
+              {
+                $set: {
+                  deliveryPartnerId:
+                    partner._id,
+                  deliveryPartnerName:
+                    partner.name,
+                  deliveryPartnerMobile:
+                    partner.mobile,
+                  status:
+                    "Assigned",
+                  updatedAt:
+                    new Date(),
+                },
+              }
+            );
+
+          if (
+            result.matchedCount ===
+            0
+          ) {
+            return res.status(404).json({
+              success: false,
+              message:
+                "Order not found",
+            });
+          }
+
+          res.json({
+            success: true,
+            message:
+              "Delivery partner assigned successfully",
+          });
+        } catch (error) {
+          console.error(
+            "Assign Delivery Error:",
+            error
+          );
+
+          res.status(500).json({
+            success: false,
+            message:
+              "Failed to assign delivery partner",
+            error:
+              error.message,
+          });
+        }
+      }
+    );
+
+    // =======================================================
+    // MAKE USER DELIVERY PARTNER
+    // =======================================================
+
+    app.post(
+      "/api/make-delivery-partner",
+      async (req, res) => {
+        try {
+          const {
+            email,
+          } = req.body;
+
+          if (!email) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Email is required",
+            });
+          }
+
+          const emailValue =
+            email
+              .trim()
+              .toLowerCase();
+
+          const result =
+            await usersCollection.updateOne(
+              {
+                email:
+                  emailValue,
+              },
+              {
+                $set: {
+                  role:
+                    "delivery_partner",
+                  updatedAt:
+                    new Date(),
+                },
+              }
+            );
+
+          if (
+            result.matchedCount ===
+            0
+          ) {
+            return res.status(404).json({
+              success: false,
+              message:
+                "User not found",
+            });
+          }
+
+          res.json({
+            success: true,
+            message:
+              "User is now delivery partner",
+          });
+        } catch (error) {
+          console.error(
+            "Make Delivery Partner Error:",
+            error
+          );
+
+          res.status(500).json({
+            success: false,
+            message:
+              "Server error",
+          });
+        }
+      }
+    );
+
     // =======================================================
     // START EXPRESS SERVER
     // =======================================================

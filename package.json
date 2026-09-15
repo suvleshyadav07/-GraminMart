@@ -4,7 +4,7 @@
   "description": "GraminMart",
   "main": "server.js",
   "scripts": {
-    "server": "node server.js",
+    "server": "node backend/server.js",
     "client": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run server\" \"npm run client\""
   },
