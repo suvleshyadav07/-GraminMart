@@ -10,7 +10,7 @@ function Users() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/admin/users"
+        "https://graminmart.onrender.com/api/admin/users"
       );
 
       const data = await response.json();

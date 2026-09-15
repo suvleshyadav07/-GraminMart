@@ -18,7 +18,7 @@ function MyOrders() {
         }
 
         const response = await fetch(
-          `http://localhost:5000/api/orders/user/${encodeURIComponent(
+          `https://graminmart.onrender.com/api/orders/user/${encodeURIComponent(
             user.email
           )}`
         );
@@ -186,4 +186,5 @@ function MyOrders() {
 }
 
 export default MyOrders;
+
 

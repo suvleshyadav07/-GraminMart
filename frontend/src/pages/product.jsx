@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./product.css";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "https://graminmart.onrender.com";
 
 function Product() {
   const [products, setProducts] = useState([]);
@@ -181,3 +181,4 @@ function Product() {
 }
 
 export default Product;
+

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const API = "http://localhost:5000";
+const API = "https://graminmart.onrender.com";
 
 export default function SellerDashboard() {
   const [user, setUser] = useState(null);

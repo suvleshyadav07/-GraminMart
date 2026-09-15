@@ -22,7 +22,7 @@ function ForgotPassword() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/forgot-password",
+        "https://graminmart.onrender.com/api/forgot-password",
         {
           method: "POST",
           headers: {
@@ -64,7 +64,7 @@ function ForgotPassword() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/verify-otp",
+        "https://graminmart.onrender.com/api/verify-otp",
         {
           method: "POST",
           headers: {
@@ -107,7 +107,7 @@ function ForgotPassword() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/reset-password",
+        "https://graminmart.onrender.com/api/reset-password",
         {
           method: "POST",
           headers: {
