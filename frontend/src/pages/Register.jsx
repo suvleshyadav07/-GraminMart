@@ -47,7 +47,7 @@ function Register() {
       setLoading(true);
 
       const response = await fetch(
-        "https://graminmart.onrender.com/api/register",
+        "https://graminmart-backend.onrender.com/api/register",
         {
           method: "POST",
           headers: {
